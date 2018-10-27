@@ -1,0 +1,144 @@
+<launch>  
+
+  <!-- This launch assumes that you have already 
+       started you preferred RGB-D sensor and your IMU.
+       TF between frame_id and the sensors should already be set too. -->
+       
+  <arg name="frame_id"                default="base_link" />
+  <arg name="rgb_topic"               default="/camera/infra1/image_rect_raw" />
+  <arg name="depth_topic"             default="/camera/aligned_depth_to_color/image_raw" />
+  <arg name="camera_info_topic"       default="/camera/infra1/camera_info" />
+  <arg name="imu_topic"               default="/imu/data" />
+  <arg name="imu_ignore_acc"          default="true" />
+  <arg name="imu_remove_gravitational_acceleration" default="true" />
+
+  <node pkg="mavros" type="imu_republish_tsukuba.py" name="imu_republisher"/>
+  <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0 0 0 0 base_link aircraft 100" />
+  <node pkg="tf" type="static_transform_publisher" name="link2_broadcaster" args="0.3 0 0.3 -1.5707963267948966 0.0 -1.5707963267948966 base_link camera_infra1_optical_frame 100" />
+  <!-- Localization-only mode -->
+  <arg name="localization"      default="false"/>
+  <arg     if="$(arg localization)" name="rtabmap_args"  default=""/>
+  <arg unless="$(arg localization)" name="rtabmap_args"  default=""/>
+  
+  
+  <group ns="rtabmap">
+    <!-- Visual Odometry -->
+    <node pkg="rtabmap_ros" type="rgbd_odometry" name="visual_odometry" output="screen" args="$(arg rtabmap_args)">
+      <remap from="rgb/image"       to="$(arg rgb_topic)"/>
+      <remap from="depth/image"     to="$(arg depth_topic)"/>
+      <remap from="rgb/camera_info" to="$(arg camera_info_topic)"/>
+      <remap from="odom"            to="/vo"/>
+
+      <param name="frame_id"               type="string" value="$(arg frame_id)"/>
+      <param name="publish_tf"             type="bool"   value="false"/>
+      <param name="publish_null_when_lost" type="bool"   value="false"/>
+      <param name="guess_from_tf"          type="bool"   value="false"/>
+
+      <param name="Odom/FillInfoData"      type="string" value="true"/>
+      <param name="Odom/ResetCountdown"    type="string" value="1"/>
+      <param name="Vis/FeatureType"        type="string" value="6"/> 
+      <param name="OdomF2M/MaxSize"        type="string" value="1000"/>
+    </node>
+
+    <!-- SLAM -->
+    <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="$(arg rtabmap_args)">
+      <param name="frame_id"        type="string" value="$(arg frame_id)"/>
+ 
+      <remap from="rgb/image"       to="$(arg rgb_topic)"/>
+      <remap from="depth/image"     to="$(arg depth_topic)"/>
+      <remap from="rgb/camera_info" to="$(arg camera_info_topic)"/>
+      <remap from="odom"            to="/odometry/filtered"/>
+      
+      <param name="Kp/DetectorStrategy"    type="string" value="8"/> <!-- use same features as odom -->
+      <param name="Optimizer/Strategy" type="string" value="0"/>
+	<param name="RGBD/OptimizeMaxError"      type="string" value="5000"/>
+
+      <!-- localization mode -->
+      <param name="Mem/InitWMWithAllNodes" type="string" value="$(arg localization)"/> 
+      <param     if="$(arg localization)" name="Mem/IncrementalMemory" type="string" value="false"/>
+      <param unless="$(arg localization)" name="Mem/IncrementalMemory" type="string" value="true"/>
+      
+    </node>
+  </group>
+
+  <!-- Odometry fusion (EKF), refer to demo launch file in robot_localization for more info -->
+  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization" clear_params="true" output="screen">
+
+      <param name="frequency" value="50"/>
+      <param name="sensor_timeout" value="0.1"/>
+      <param name="two_d_mode" value="true"/>
+
+      <param name="odom_frame" value="odom"/>
+      <param name="base_link_frame" value="$(arg frame_id)"/>
+      <param name="world_frame" value="odom"/>
+
+      <param name="transform_time_offset" value="0.0"/>
+
+      <param name="odom0" value="/vo"/>
+      <param name="imu0" value="$(arg imu_topic)"/> 
+
+      <!-- The order of the values is x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az. -->
+      <rosparam param="odom0_config">[true, false, false,
+                                      false, false, true,
+                                      true, false, false,
+                                      false, false, true,
+                                      false, false, false]</rosparam>
+
+      <rosparam param="imu0_config">[false, false, false,
+                                     false, false, false,
+                                     false, false, false,
+                                     false,  false,  false,
+                                     false,  false,  false] </rosparam>
+      
+      <param name="odom0_differential" value="true"/>
+      <param name="imu0_differential" value="true"/>
+
+      <param name="odom0_relative" value="false"/>
+      <param name="imu0_relative" value="false"/>
+
+      <param name="imu0_remove_gravitational_acceleration" value="$(arg imu_remove_gravitational_acceleration)"/>
+
+      <param name="print_diagnostics" value="true"/>
+
+      <!-- ======== ADVANCED PARAMETERS ======== -->
+      <param name="odom0_queue_size" value="5"/>
+      <param name="imu0_queue_size" value="50"/> 
+
+      <!-- The values are ordered as x, y, z, roll, pitch, yaw, vx, vy, vz,
+           vroll, vpitch, vyaw, ax, ay, az. -->
+      <rosparam param="process_noise_covariance">[0.0005, 0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                                  0,    0.0005, 0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                                  0,    0,    0.006, 0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                                  0,    0,    0,    0.003, 0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                                  0,    0,    0,    0,    0.003, 0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                                  0,    0,    0,    0,    0,    0.0001, 0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                                  0,    0,    0,    0,    0,    0,   0.005, 0,     0,    0,    0,    0,    0,    0,    0,
+                                                  0,    0,    0,    0,    0,    0,    0,     0.005, 0,    0,    0,    0,    0,    0,    0,
+                                                  0,    0,    0,    0,    0,    0,    0,     0,     0.0025, 0,    0,    0,    0,    0,    0,
+                                                  0,    0,    0,    0,    0,    0,    0,     0,     0,    0.0025, 0,    0,    0,    0,    0,
+                                                  0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0.004, 0,    0,    0,    0,
+                                                  0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0.0001, 0,    0,    0,
+                                                  0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0.001, 0,    0,
+                                                  0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0.001, 0,
+                                                  0,    0,    0,    0,    0,    0,   0,     0,     0,    0,    0,    0,    0,    0,    0.0015]</rosparam>
+
+      <!-- The values are ordered as x, y,
+           z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az. -->
+           <rosparam param="initial_estimate_covariance">[1e-9, 0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                                          0,    1e-9, 0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                                          0,    0,    1e-9, 0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                                          0,    0,    0,    1e-9, 0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                                          0,    0,    0,    0,    1e-9, 0,    0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                                          0,    0,    0,    0,    0,    1e-9, 0,    0,    0,    0,     0,     0,     0,    0,    0,
+                                                          0,    0,    0,    0,    0,    0,    1e-9, 0,    0,    0,     0,     0,     0,    0,    0,
+                                                          0,    0,    0,    0,    0,    0,    0,    1e-9, 0,    0,     0,     0,     0,    0,    0,
+                                                          0,    0,    0,    0,    0,    0,    0,    0,    1e-9, 0,     0,     0,     0,    0,    0,
+                                                          0,    0,    0,    0,    0,    0,    0,    0,    0,    1e-9,  0,     0,     0,    0,    0,
+                                                          0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     1e-9,  0,     0,    0,    0,
+                                                          0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     1e-9,  0,    0,    0,
+                                                          0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     1e-9, 0,    0,
+                                                          0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    1e-9, 0,
+                                                          0,    0,    0,    0,    0,    0,    0,    0,    0,    0,     0,     0,     0,    0,    1e-9]</rosparam>
+
+    </node>
+</launch>
