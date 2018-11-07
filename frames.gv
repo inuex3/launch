@@ -1,0 +1,16 @@
+digraph G {
+"odom" -> "base_link"[label="Broadcaster: /ekf_localization\nAverage rate: 38.782 Hz\nMost recent transform: 1540537089.701 ( 0.061 sec old)\nBuffer length: 4.899 sec\n"];
+"map" -> "odom"[label="Broadcaster: /ekf_localization_with_gps\nAverage rate: 38.893 Hz\nMost recent transform: 1540537089.701 ( 0.061 sec old)\nBuffer length: 4.859 sec\n"];
+"base_link" -> "camera_color_optical_frame"[label="Broadcaster: /link2_broadcaster\nAverage rate: 9.330 Hz\nMost recent transform: 1540537089.852 ( -0.090 sec old)\nBuffer length: 4.823 sec\n"];
+"base_link" -> "aircraft"[label="Broadcaster: /link1_broadcaster\nAverage rate: 9.330 Hz\nMost recent transform: 1540537089.852 ( -0.090 sec old)\nBuffer length: 4.823 sec\n"];
+"far_field" -> "origin"[label="Broadcaster: /swri_transform\nAverage rate: 9.330 Hz\nMost recent transform: 1540537089.852 ( -0.090 sec old)\nBuffer length: 4.823 sec\n"];
+"odom" -> "odom__identity"[label="Broadcaster: /initialize_origin\nAverage rate: 1.242 Hz\nMost recent transform: 1540537089.687 ( 0.076 sec old)\nBuffer length: 4.026 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1540537089.762"[ shape=plaintext ] ;
+ }->"map";
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1540537089.762"[ shape=plaintext ] ;
+ }->"far_field";
+}
