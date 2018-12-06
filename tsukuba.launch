@@ -41,6 +41,8 @@
       <param name="Odom/ResetCountdown"    type="string" value="1"/>
       <param name="Vis/FeatureType"        type="string" value="6"/> 
       <param name="OdomF2M/MaxSize"        type="string" value="1000"/>
+      <param name="Vis/EstimationType"        type="string" value="0"/> 
+      <param name="Vis/MaxDepth" type="string" value="5"/> <!-- odometry -->
     </node>
 
     <!-- SLAM -->
@@ -67,7 +69,7 @@
   </group>
 
   <!-- Odometry fusion (EKF), refer to demo launch file in robot_localization for more info -->
-  <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization_gps" clear_params="true" output="screen">
+  <node pkg="robot_localization" type="ukf_localization_node" name="ekf_localization_gps" clear_params="true" output="screen">
       <param name="frequency" value="50"/>
       <param name="sensor_timeout" value="0.1"/>
       <param name="two_d_mode" value="true"/>
@@ -105,11 +107,8 @@
       <param name="imu0_differential" value="false"/>
 
       <param name="odom0_relative" value="true"/>
-      <param name="odom1_relative" value="true"/>
+      <param name="odom1_relative" value="false"/>
       <param name="imu0_relative" value="true"/>
-
-
-      <param name="odom1_pose_rejection_threshold" value="1"/>
 
       <param name="print_diagnostics" value="false"/>
 
@@ -120,8 +119,8 @@
 
       <!-- The values are ordered as x, y, z, roll, pitch, yaw, vx, vy, vz,
            vroll, vpitch, vyaw, ax, ay, az. -->
-      <rosparam param="process_noise_covariance">[0.05, 0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
-                                                  0,   0.05, 0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+      <rosparam param="process_noise_covariance">[0.005, 0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                                  0,   0.005, 0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
                                                   0,    0,    0.006, 0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
                                                   0,    0,    0,    0.003, 0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
                                                   0,    0,    0,    0,    0.003, 0,    0,     0,     0,    0,    0,    0,    0,    0,    0,

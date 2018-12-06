@@ -12,7 +12,10 @@
   <arg name="imu_remove_gravitational_acceleration" default="true" />
 
   <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="-0.05 0 0.4 0 0 0 base_link aircraft 100" />
-  <node pkg="tf" type="static_transform_publisher" name="link2_broadcaster" args="0.0 0.0 0.4 0 0 0  base_link camera_link 100" />
+  <!--<node pkg="tf" type="static_transform_publisher" name="link2_broadcaster" args="0.0 0.0 0.4 0 0 0  base_link camera_link 100" />-->
+
+  <node pkg="tf" type="static_transform_publisher" name="link2_broadcaster" args="0.3 0 0.8 -1.7007963267948966 0 -1.5707963267948966 base_link camera_color_optical_frame 10" />
+  <node pkg="tf" type="static_transform_publisher" name="link3_broadcaster" args="0.3 0 0.8 -1.5707963267948966 0 -1.5707963267948966 base_link camera_depth_optical_frame 10" />
 
   <!-- Localization-only mode -->
   <arg name="localization"      default="false"/>
@@ -36,8 +39,10 @@
       <param name="Odom/FillInfoData"      type="string" value="true"/>
       <param name="Odom/ResetCountdown"    type="string" value="1"/>
       <param name="Vis/FeatureType"        type="string" value="6"/> 
-      <param name="OdomF2M/MaxSize"        type="string" value="1c000"/>
-      <param name="Reg/Force3DoF"    value="false" />
+      <param name="OdomF2M/MaxSize"        type="string" value="1000"/>
+      <param name="Reg/Force3DoF"    value="true" />
+      <!-- Correspondences: 0=Features Matching, 1=Optical Flow -->
+      <param name="Vis/CorType" value="1"/>
     </node>
 
     <!-- SLAM -->
@@ -81,16 +86,16 @@
 
       <param name="dynamic_process_noise_covariance" value="true"/>
       <!-- The order of the values is x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az. -->
-      <rosparam param="odom0_config">[true, true, false,
+      <rosparam param="odom0_config">[false, false, true,
                                       false, false, false,
-                                      true, true, false,
+                                      false, false, false,
                                       false, false, false,
                                       false, false, false]</rosparam>
 
       <rosparam param="imu0_config">[false, false, false,
-                                     false, false, true,
                                      false, false, false,
-                                     false,  false,  true,
+                                     false, false, false,
+                                     false,  false,  false,
                                      false,  false,  false] </rosparam>
       
       <param name="odom0_differential" value="false"/>
@@ -110,7 +115,7 @@
       <!-- The values are ordered as x, y, z, roll, pitch, yaw, vx, vy, vz,
            vroll, vpitch, vyaw, ax, ay, az. -->
       <rosparam param="process_noise_covariance">[0.005, 0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
-                                                  0,    0.05, 0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                                  0,    0.005, 0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
                                                   0,    0,    0.006, 0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
                                                   0,    0,    0,    0.003, 0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
                                                   0,    0,    0,    0,    0.003, 0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
